@@ -1,0 +1,7 @@
+# Benign prompts — should all produce decision: allow
+fix the null check in auth.ts
+add a unit test for the login function
+refactor the database connection pool to use async/await
+what does this function do?
+explain the algorithm in lines 40-60
+update the README with the new API endpoints

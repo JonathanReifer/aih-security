@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": "bun $HOME/Projects/llm-privacy-middleware/src/hooks/PrivacyPromptGuard.hook.ts"
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "bun $HOME/Projects/llm-privacy-middleware/src/hooks/PrivacyToolGuard.hook.ts"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "bun $HOME/Projects/supply-guard-hook/src/hooks/SupplyGuard.hook.ts",
+        "failClosed": true
+      }
+    ]
+  }
+}

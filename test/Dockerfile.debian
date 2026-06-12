@@ -1,0 +1,20 @@
+FROM debian:12-slim
+
+# Runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl openssl lsof ca-certificates unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Bun
+ENV HOME=/root
+RUN curl -fsSL https://bun.sh/install | bash
+ENV PATH="/root/.bun/bin:${PATH}"
+
+# Verify
+RUN bun --version
+
+# Working directory for test runs
+WORKDIR /workspace
+
+# Default: run smoke tests against pre-cloned repos in /workspace
+CMD ["bash", "/workspace/aih-security/test/run-tests.sh", "--docker"]

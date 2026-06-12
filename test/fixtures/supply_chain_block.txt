@@ -1,0 +1,5 @@
+# Supply chain payloads that should be blocked (known malicious or typosquat)
+pip install coloama
+pip install requets
+npm install crossenv
+bun add lodahs
