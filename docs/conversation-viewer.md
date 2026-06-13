@@ -48,6 +48,11 @@ The proxy writes findings only when `LLM_PRIVACY_LOG_PROMPTS` is not `none`.
 
 ## OTEL (Optional — Loki Required)
 
+> **Loki source:** The easiest way to get a Loki instance is
+> `cd ~/Projects/aih-observability && docker compose up -d`.
+> See the [aih-observability README](../../../aih-observability/docker-compose.yml) for
+> what gets started (OTEL collector, Loki, Prometheus, Grafana).
+
 If you have a Loki instance running (default: `localhost:3100`) and Claude Code is
 instrumented with the PAI OTEL hook, the viewer also shows:
 

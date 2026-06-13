@@ -18,6 +18,8 @@ templates.
 | [llm-privacy-middleware](../llm-privacy-middleware/) | Hook-based privacy guard — intercepts Bash/Write/Edit tool calls, blocks or asks on secrets and PII |
 | [llm_prompt_protection](../llm_prompt_protection/) | MITRE ATLAS injection/adversarial detector — covers AML.T0051 through AML.T0098 |
 | [supply-guard-hook](../supply-guard-hook/) | Package install interceptor — typosquatting, known-malicious packages, new/unpopular packages, custom registry overrides |
+| [aih-conversation-viewer](../aih-conversation-viewer/) | Session viewer — conversation bubbles, tool decisions, PII detection, and ATLAS security findings per session |
+| [aih-observability](../aih-observability/) | Optional OTEL + Loki + Prometheus + Grafana stack — hook telemetry, session cost, tool decision timelines |
 
 ---
 
@@ -48,6 +50,25 @@ bash install.sh --tier=1   # proxy only
 bash install.sh --tier=2   # proxy + middleware
 bash install.sh            # interactive; asks which tier (default: 3)
 ```
+
+---
+
+## Optional: Observability Stack
+
+`aih-observability` provides the OTEL collector, Loki, Prometheus, and Grafana stack that
+powers the "Unified" timeline view in the conversation viewer. It is not required for any
+security tier but unlocks full hook-execution timelines, per-tool decision history, and
+per-session API cost tracking.
+
+```bash
+cd ~/Projects/aih-observability
+docker compose up -d
+```
+
+Ports: **OTEL** 4317/4318 · **Loki** 3100 · **Prometheus** 9090 · **Grafana** 3001
+
+Start Grafana at `http://localhost:3001` (admin / aih). See
+[docs/conversation-viewer.md](docs/conversation-viewer.md) for how to connect the viewer.
 
 ---
 
