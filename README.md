@@ -60,15 +60,16 @@ powers the "Unified" timeline view in the conversation viewer. It is not require
 security tier but unlocks full hook-execution timelines, per-tool decision history, and
 per-session API cost tracking.
 
-```bash
-cd ~/Projects/aih-observability
-docker compose up -d
-```
+Supports two deployment modes:
+
+- **Local** — stack runs on the same machine as Claude Code (`docker compose up -d`)
+- **Remote** — stack runs on a dedicated server; multiple client machines point at it via
+  `OTEL_EXPORTER_OTLP_ENDPOINT` and `LOKI_URL` env vars
+
+`install.sh` prompts for local/remote/skip at Step 6.5 and configures `~/.llm-privacy/.env.sh`
+automatically. For manual setup, see [docs/observability.md](docs/observability.md).
 
 Ports: **OTEL** 4317/4318 · **Loki** 3100 · **Prometheus** 9090 · **Grafana** 3001
-
-Start Grafana at `http://localhost:3001` (admin / aih). See
-[docs/conversation-viewer.md](docs/conversation-viewer.md) for how to connect the viewer.
 
 ---
 
@@ -91,6 +92,7 @@ Start Grafana at `http://localhost:3001` (admin / aih). See
 - [docs/testing.md](docs/testing.md) — how to validate the stack on a fresh box
 - [docs/harness-adapters.md](docs/harness-adapters.md) — Cursor, OpenCode, Grok Build setup
 - [docs/conversation-viewer.md](docs/conversation-viewer.md) — connecting aih-conversation-viewer
+- [docs/observability.md](docs/observability.md) — local and remote observability setup
 
 ---
 

@@ -230,6 +230,73 @@ write_key() {
 write_key "LLM_PRIVACY_HMAC_KEY"
 write_key "LLM_PRIVACY_VAULT_KEY"
 
+# Write an env var (create or update) in ENV_FILE
+write_env() {
+  local var="$1" val="$2"
+  if grep -q "^export ${var}=" "$ENV_FILE" 2>/dev/null; then
+    sed -i.bak "s|^export ${var}=.*|export ${var}=\"${val}\"|" "$ENV_FILE" && rm -f "${ENV_FILE}.bak"
+    ok "${var} updated in ${ENV_FILE}"
+  else
+    printf 'export %s="%s"\n' "$var" "$val" >> "$ENV_FILE"
+    ok "${var} written to ${ENV_FILE}"
+  fi
+}
+
+# ── Step 6.5: Observability (optional) ────────────────────────────────────
+
+print_step "Observability (optional)"
+echo ""
+echo "  Choose an observability mode:"
+echo "    1) Local  — run aih-observability stack on this machine (requires Docker)"
+echo "    2) Remote — connect to an existing observability instance"
+echo "    3) Skip   — configure later (see docs/observability.md)"
+echo ""
+
+if [ ! -t 0 ]; then
+  OBS_CHOICE="3"
+  warn "Non-interactive mode — skipping observability setup"
+else
+  read -rp "  Choice [1/2/3, default=3]: " OBS_INPUT
+  OBS_CHOICE="${OBS_INPUT:-3}"
+fi
+
+case "$OBS_CHOICE" in
+  1)
+    if ! command -v docker &>/dev/null; then
+      warn "Docker not found — install Docker first: https://docs.docker.com/engine/install/"
+      warn "Skipping. Re-run install.sh after installing Docker to set up observability."
+    else
+      clone_or_update "aih-observability" "${GITLAB_BASE}/aih-observability.git"
+      OBS_DIR="${PROJECTS_DIR}/aih-observability"
+      if [ -d "$OBS_DIR" ]; then
+        echo "  Starting aih-observability..."
+        (cd "$OBS_DIR" && docker compose up -d) 2>/dev/null
+        ok "aih-observability started — Grafana: http://localhost:3001 (admin/aih)"
+        write_env "OTEL_EXPORTER_OTLP_ENDPOINT" "http://localhost:4317"
+        write_env "LOKI_URL" "http://localhost:3100"
+      fi
+    fi
+    ;;
+  2)
+    echo ""
+    read -rp "  OTEL endpoint (e.g. http://192.168.1.10:4317): " OTEL_ENDPOINT_INPUT
+    read -rp "  Loki URL      (e.g. http://192.168.1.10:3100): " LOKI_URL_INPUT
+    if [ -n "$OTEL_ENDPOINT_INPUT" ] && [ -n "$LOKI_URL_INPUT" ]; then
+      write_env "OTEL_EXPORTER_OTLP_ENDPOINT" "$OTEL_ENDPOINT_INPUT"
+      write_env "LOKI_URL" "$LOKI_URL_INPUT"
+      ok "Remote observability configured"
+    else
+      warn "Empty input — observability not configured. Edit ${ENV_FILE} manually."
+    fi
+    ;;
+  3)
+    ok "Observability skipped — see docs/observability.md to configure later"
+    ;;
+  *)
+    warn "Invalid choice '${OBS_CHOICE}' — skipping observability"
+    ;;
+esac
+
 # ── Step 7: Wire shell RC file ─────────────────────────────────────────────
 
 print_step "Configuring shell environment"
@@ -390,6 +457,7 @@ echo ""
 echo "  Restart Claude Code to pick up settings.json changes."
 echo ""
 echo "  Docs:"
-echo "    QUICKSTART: ${PROJECTS_DIR}/aih-security/QUICKSTART.md"
-echo "    Testing:    ${PROJECTS_DIR}/aih-security/docs/testing.md"
+echo "    QUICKSTART:    ${PROJECTS_DIR}/aih-security/QUICKSTART.md"
+echo "    Observability: ${PROJECTS_DIR}/aih-security/docs/observability.md"
+echo "    Testing:       ${PROJECTS_DIR}/aih-security/docs/testing.md"
 echo ""

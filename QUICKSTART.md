@@ -287,6 +287,36 @@ echo '{"prompt":"fix the null check in auth.ts"}' | \
 
 ---
 
+## Observability (Optional)
+
+The `aih-observability` stack adds OTEL-based telemetry: hook execution timelines, per-tool
+decision history, and session cost tracking, visible in the conversation viewer's
+"Unified" tab.
+
+### Quick start — local mode
+
+```bash
+cd ~/Projects/aih-observability
+docker compose up -d
+
+# Add to ~/.llm-privacy/.env.sh:
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+export LOKI_URL=http://localhost:3100
+
+# Start the conversation viewer:
+source ~/.llm-privacy/.env.sh
+bun ~/Projects/aih-conversation-viewer/src/server.ts
+# → http://localhost:4446
+```
+
+The `install.sh` installer prompts for local/remote/skip at Step 6.5 and handles cloning
+and env var setup automatically.
+
+For remote mode (multiple clients pointing at a shared instance) and full configuration
+options, see [docs/observability.md](docs/observability.md).
+
+---
+
 ## Complete `~/.claude/settings.json` Reference (Tier 3)
 
 ```json
