@@ -14,12 +14,12 @@ templates.
 
 | Project | What it does |
 |---------|-------------|
-| [aih-privacy-proxy](../aih-privacy-proxy/) | Transparent bidirectional tokenization proxy — sits between Claude Code and `api.anthropic.com`, tokenizes secrets/PII in outbound requests and detokenizes responses |
-| [aih-privacy-middleware](../aih-privacy-middleware/) | Hook-based privacy guard — intercepts Bash/Write/Edit tool calls, blocks or asks on secrets and PII |
-| [aih-prompt-protection](../aih-prompt-protection/) | MITRE ATLAS injection/adversarial detector — covers AML.T0051 through AML.T0098 |
-| [supply-guard-hook](../supply-guard-hook/) | Package install interceptor — typosquatting, known-malicious packages, new/unpopular packages, custom registry overrides |
-| [aih-conversation-viewer](../aih-conversation-viewer/) | Session viewer — conversation bubbles, tool decisions, PII detection, and ATLAS security findings per session |
-| [aih-observability](../aih-observability/) | Optional OTEL + Loki + Prometheus + Grafana stack — hook telemetry, session cost, tool decision timelines |
+| [aih-privacy-proxy](https://github.com/JonathanReifer/aih-privacy-proxy) | Transparent bidirectional tokenization proxy — sits between Claude Code and `api.anthropic.com`, tokenizes secrets/PII in outbound requests and detokenizes responses |
+| [aih-privacy-middleware](https://github.com/JonathanReifer/aih-privacy-middleware) | Hook-based privacy guard — intercepts Bash/Write/Edit tool calls, blocks or asks on secrets and PII |
+| [aih-prompt-protection](https://github.com/JonathanReifer/aih-prompt-protection) | MITRE ATLAS injection/adversarial detector — covers AML.T0051 through AML.T0098 |
+| [supply-guard-hook](https://github.com/JonathanReifer/supply-guard-hook) | Package install interceptor — typosquatting, known-malicious packages, new/unpopular packages, custom registry overrides |
+| [aih-conversation-viewer](https://github.com/JonathanReifer/aih-conversation-viewer) | Session viewer — conversation bubbles, tool decisions, PII detection, and ATLAS security findings per session |
+| [aih-observability](https://github.com/JonathanReifer/aih-observability) | Optional OTEL + Loki + Prometheus + Grafana stack — hook telemetry, session cost, tool decision timelines |
 
 ---
 
