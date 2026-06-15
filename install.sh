@@ -297,6 +297,27 @@ case "$OBS_CHOICE" in
     ;;
 esac
 
+# ── Step 6.6: Conversation Viewer (optional) ──────────────────────────────
+
+print_step "Conversation Viewer (optional)"
+echo ""
+echo "  aih-conversation-viewer shows sessions, PII detection, and"
+echo "  ATLAS security findings. Requires Bun — no Docker needed."
+echo ""
+
+if ask_yes "Install aih-conversation-viewer?" "Y"; then
+  clone_or_update "aih-conversation-viewer" "${GITLAB_BASE}/aih-conversation-viewer.git"
+  VIEWER_DIR="${PROJECTS_DIR}/aih-conversation-viewer"
+  if [ -d "$VIEWER_DIR" ]; then
+    bun_install "$VIEWER_DIR" "aih-conversation-viewer"
+    ok "Viewer installed — start with:"
+    ok "  bun ${VIEWER_DIR}/src/server.ts"
+    ok "  → http://localhost:4446"
+  fi
+else
+  ok "Viewer skipped — clone manually: git clone ${GITLAB_BASE}/aih-conversation-viewer.git"
+fi
+
 # ── Step 7: Wire shell RC file ─────────────────────────────────────────────
 
 print_step "Configuring shell environment"
@@ -456,6 +477,13 @@ echo "    source ${ENV_FILE}"
 echo ""
 echo "  Restart Claude Code to pick up settings.json changes."
 echo ""
+if [ -d "${PROJECTS_DIR}/aih-conversation-viewer" ]; then
+  echo "  Conversation Viewer:"
+  echo "    source ${ENV_FILE}"
+  echo "    bun ${PROJECTS_DIR}/aih-conversation-viewer/src/server.ts"
+  echo "    → http://localhost:4446"
+  echo ""
+fi
 echo "  Docs:"
 echo "    QUICKSTART:    ${PROJECTS_DIR}/aih-security/QUICKSTART.md"
 echo "    Observability: ${PROJECTS_DIR}/aih-security/docs/observability.md"
