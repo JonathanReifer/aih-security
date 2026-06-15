@@ -17,7 +17,7 @@ Run everything on the same machine as Claude Code.
 
 ```bash
 # Clone (or let install.sh do this):
-git clone ssh://git@gitlab.rsolabs.com:223/ai/aih-observability.git ~/Projects/aih-observability
+git clone https://github.com/JonathanReifer/aih-observability.git ~/Projects/aih-observability
 
 cd ~/Projects/aih-observability
 docker compose up -d
@@ -109,8 +109,8 @@ PII match rates from the proxy.
 | Source | Data | Status |
 |--------|------|--------|
 | PAI OTEL hook | Hook execution timelines, tool decisions, session cost | Available now |
-| llm-privacy-proxy | Security scan findings as OTEL spans | Planned (Phase 4) |
-| llm-privacy-middleware | Block/ask decisions as OTEL spans | Planned (Phase 4) |
+| aih-privacy-proxy | Security scan findings as OTEL spans | Planned (Phase 4) |
+| aih-privacy-middleware | Block/ask decisions as OTEL spans | Planned (Phase 4) |
 
 The collection infrastructure is ready. OTEL emission from the proxy and middleware is
 listed as deferred work in `ARCHITECTURE.md`.

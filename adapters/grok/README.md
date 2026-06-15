@@ -24,7 +24,7 @@ Grok Build docs for your version). The hook contract is identical to Claude Code
         "hooks": [
           {
             "type": "command",
-            "command": "bun $HOME/Projects/llm-privacy-middleware/src/hooks/PrivacyToolGuard.hook.ts"
+            "command": "bun $HOME/Projects/aih-privacy-middleware/src/hooks/PrivacyToolGuard.hook.ts"
           },
           {
             "type": "command",
@@ -37,7 +37,7 @@ Grok Build docs for your version). The hook contract is identical to Claude Code
       {
         "hooks": [{
           "type": "command",
-          "command": "bun $HOME/Projects/llm-privacy-middleware/src/hooks/PrivacyPromptGuard.hook.ts"
+          "command": "bun $HOME/Projects/aih-privacy-middleware/src/hooks/PrivacyPromptGuard.hook.ts"
         }]
       }
     ]

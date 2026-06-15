@@ -156,7 +156,7 @@ esac
 
 print_step "Cloning repositories"
 
-GITLAB_BASE="ssh://git@gitlab.rsolabs.com:223/ai"
+GITHUB_BASE="https://github.com/JonathanReifer"
 
 clone_or_update() {
   local name="$1" remote="$2"
@@ -176,15 +176,15 @@ clone_or_update() {
 mkdir -p "$PROJECTS_DIR"
 
 # Always clone proxy (required at all tiers)
-clone_or_update "llm-privacy-proxy"   "${GITLAB_BASE}/llm-privacy-proxy.git"
+clone_or_update "aih-privacy-proxy"   "${GITHUB_BASE}/aih-privacy-proxy.git"
 
 if [ "$TIER" -ge 2 ]; then
-  clone_or_update "llm-privacy-middleware" "${GITLAB_BASE}/llm-privacy-middleware.git"
+  clone_or_update "aih-privacy-middleware" "${GITHUB_BASE}/aih-privacy-middleware.git"
 fi
 
 if [ "$TIER" -ge 3 ]; then
-  clone_or_update "llm_prompt_protection"  "${GITLAB_BASE}/llm-prompt-protection.git"
-  clone_or_update "supply-guard-hook"      "${GITLAB_BASE}/supply-guard-hook.git"
+  clone_or_update "aih-prompt-protection"  "${GITHUB_BASE}/aih-prompt-protection.git"
+  clone_or_update "supply-guard-hook"      "ssh://git@gitlab.rsolabs.com:223/ai/supply-guard-hook.git"
 fi
 
 # ── Step 5: Install dependencies ──────────────────────────────────────────
@@ -199,9 +199,9 @@ bun_install() {
   ok "${name} deps installed"
 }
 
-bun_install "${PROJECTS_DIR}/llm-privacy-proxy"       "llm-privacy-proxy"
-[ "$TIER" -ge 2 ] && bun_install "${PROJECTS_DIR}/llm-privacy-middleware"    "llm-privacy-middleware"
-[ "$TIER" -ge 3 ] && bun_install "${PROJECTS_DIR}/llm_prompt_protection"     "llm_prompt_protection"
+bun_install "${PROJECTS_DIR}/aih-privacy-proxy"       "aih-privacy-proxy"
+[ "$TIER" -ge 2 ] && bun_install "${PROJECTS_DIR}/aih-privacy-middleware"    "aih-privacy-middleware"
+[ "$TIER" -ge 3 ] && bun_install "${PROJECTS_DIR}/aih-prompt-protection"     "aih-prompt-protection"
 [ "$TIER" -ge 3 ] && bun_install "${PROJECTS_DIR}/supply-guard-hook"         "supply-guard-hook"
 
 # ── Step 6: Generate and write encryption keys ─────────────────────────────
@@ -266,7 +266,7 @@ case "$OBS_CHOICE" in
       warn "Docker not found — install Docker first: https://docs.docker.com/engine/install/"
       warn "Skipping. Re-run install.sh after installing Docker to set up observability."
     else
-      clone_or_update "aih-observability" "${GITLAB_BASE}/aih-observability.git"
+      clone_or_update "aih-observability" "${GITHUB_BASE}/aih-observability.git"
       OBS_DIR="${PROJECTS_DIR}/aih-observability"
       if [ -d "$OBS_DIR" ]; then
         echo "  Starting aih-observability..."
@@ -306,7 +306,7 @@ echo "  ATLAS security findings. Requires Bun — no Docker needed."
 echo ""
 
 if ask_yes "Install aih-conversation-viewer?" "Y"; then
-  clone_or_update "aih-conversation-viewer" "${GITLAB_BASE}/aih-conversation-viewer.git"
+  clone_or_update "aih-conversation-viewer" "${GITHUB_BASE}/aih-conversation-viewer.git"
   VIEWER_DIR="${PROJECTS_DIR}/aih-conversation-viewer"
   if [ -d "$VIEWER_DIR" ]; then
     bun_install "$VIEWER_DIR" "aih-conversation-viewer"
@@ -315,7 +315,7 @@ if ask_yes "Install aih-conversation-viewer?" "Y"; then
     ok "  → http://localhost:4446"
   fi
 else
-  ok "Viewer skipped — clone manually: git clone ${GITLAB_BASE}/aih-conversation-viewer.git"
+  ok "Viewer skipped — clone manually: git clone ${GITHUB_BASE}/aih-conversation-viewer.git"
 fi
 
 # ── Step 7: Wire shell RC file ─────────────────────────────────────────────
@@ -337,9 +337,9 @@ source "$ENV_FILE"
 
 print_step "Configuring Claude Code"
 
-PROXY_PATH="${PROJECTS_DIR}/llm-privacy-proxy"
-MW_PATH="${PROJECTS_DIR}/llm-privacy-middleware"
-PP_PATH="${PROJECTS_DIR}/llm_prompt_protection"
+PROXY_PATH="${PROJECTS_DIR}/aih-privacy-proxy"
+MW_PATH="${PROJECTS_DIR}/aih-privacy-middleware"
+PP_PATH="${PROJECTS_DIR}/aih-prompt-protection"
 SG_PATH="${PROJECTS_DIR}/supply-guard-hook"
 
 if [ ! -f "$CLAUDE_SETTINGS" ]; then
@@ -442,7 +442,7 @@ else
   warn "Proxy health check failed — check ${LLM_PRIVACY_DIR}/proxy.log"
 fi
 
-if [ "$TIER" -ge 2 ] && [ -d "${PROJECTS_DIR}/llm-privacy-middleware" ]; then
+if [ "$TIER" -ge 2 ] && [ -d "${PROJECTS_DIR}/aih-privacy-middleware" ]; then
   result="$(echo '{"prompt":"fix the null check in auth.ts"}' | bun "${MW_PATH}/src/hooks/PrivacyPromptGuard.hook.ts" 2>/dev/null || echo 'error')"
   if echo "$result" | grep -q '"decision":"allow"' 2>/dev/null; then
     ok "Middleware: benign prompt → allow"

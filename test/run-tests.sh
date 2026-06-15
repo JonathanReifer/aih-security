@@ -22,8 +22,8 @@ done
 
 PROXY_PORT=4444
 PROXY_URL="http://localhost:${PROXY_PORT}"
-PROXY_PATH="${PROJECTS_DIR}/llm-privacy-proxy"
-MW_PATH="${PROJECTS_DIR}/llm-privacy-middleware"
+PROXY_PATH="${PROJECTS_DIR}/aih-privacy-proxy"
+MW_PATH="${PROJECTS_DIR}/aih-privacy-middleware"
 SG_PATH="${PROJECTS_DIR}/supply-guard-hook"
 FIXTURES_DIR="$(cd "$(dirname "$0")/fixtures"; pwd)"
 
@@ -50,7 +50,7 @@ run_hook() {
 section "Tier 1 — Proxy"
 
 if [ ! -d "$PROXY_PATH" ]; then
-  skip "llm-privacy-proxy not found at ${PROXY_PATH}"
+  skip "aih-privacy-proxy not found at ${PROXY_PATH}"
 else
   # Start proxy if not running
   if ! curl -sf "${PROXY_URL}/health" >/dev/null 2>&1; then
@@ -83,7 +83,7 @@ if [ "$TIER" -ge 2 ]; then
   section "Tier 2 — Middleware"
 
   if [ ! -d "$MW_PATH" ]; then
-    skip "llm-privacy-middleware not found at ${MW_PATH}"
+    skip "aih-privacy-middleware not found at ${MW_PATH}"
   else
     PROMPT_GUARD="${MW_PATH}/src/hooks/PrivacyPromptGuard.hook.ts"
     TOOL_GUARD="${MW_PATH}/src/hooks/PrivacyToolGuard.hook.ts"

@@ -81,7 +81,7 @@ cp ~/Projects/aih-security/adapters/opencode/plugin.ts .opencode/plugins/aih-sec
 
 ```typescript
 // Default paths (repos in ~/Projects):
-import { LlmProtectionHookModule } from "../../llm_prompt_protection/src/adapters/hook-module.js";
+import { LlmProtectionHookModule } from "../../aih-prompt-protection/src/adapters/hook-module.js";
 import { SupplyChainHookModule } from "../../supply-guard-hook/src/modules/index.js";
 ```
 
@@ -143,5 +143,5 @@ Or add it to your harness's env config if it supports one.
 
 Make sure the proxy is running first:
 ```bash
-~/Projects/llm-privacy-proxy/proxy.sh start
+~/Projects/aih-privacy-proxy/proxy.sh start
 ```

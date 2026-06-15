@@ -16,10 +16,10 @@ and harness adapter templates for extending the stack beyond Claude Code.
              │ prompt events / tool calls / responses   │
              ▼                                          │
  ┌────────────────────────────────────┐                 │ (if proxy enabled)
- │   llm-privacy-middleware           │                 │
+ │   aih-privacy-middleware           │                 │
  │   (hook layer)                     │                 ▼
  │                                    │  ┌──────────────────────────────────┐
- │  UserPromptSubmit                  │  │  llm-privacy-proxy               │
+ │  UserPromptSubmit                  │  │  aih-privacy-proxy               │
  │    └─ HookPipeline                 │  │  (HTTP layer, port 4444)         │
  │         ├─ PrivacyHookModule       │  │                                  │
  │         ├─ LlmProtectionHookModule │  │  request phase:                  │
@@ -45,19 +45,19 @@ and harness adapter templates for extending the stack beyond Claude Code.
 
 ## Component Roles
 
-**`llm-privacy-proxy`** — HTTP proxy between the LLM client and the upstream API (port 4444).
+**`aih-privacy-proxy`** — HTTP proxy between the LLM client and the upstream API (port 4444).
 Tokenizes secrets and PII in outbound requests so the LLM never sees real values, then
 detokenizes responses before the client sees them. Streaming is handled by a sliding-buffer
 detokenizer. Vault is SQLite with AES-256-GCM. The only layer capable of bidirectional
 transparent tokenization — hooks cannot rewrite prompts after submission.
 
-**`llm-privacy-middleware`** — Hook scripts that intercept at three lifecycle events:
+**`aih-privacy-middleware`** — Hook scripts that intercept at three lifecycle events:
 `UserPromptSubmit`, `PreToolUse`, and `Stop`. Runs a `HookPipeline` that evaluates all
 registered modules and returns a block/ask/allow decision. Owns the file vault
 (`vault.enc.json`) and the audit log for hook-layer detections. The three hook scripts are
 thin wrappers — all logic lives in the module pipeline.
 
-**`llm_prompt_protection`** — MITRE ATLAS–mapped scanner library. Provides
+**`aih-prompt-protection`** — MITRE ATLAS–mapped scanner library. Provides
 `LlmProtectionHookModule` (for middleware) and `LlmProtectionProxyModule` (for proxy).
 Five scanners cover eight ATLAS techniques. Pure module — no vault, no hooks of its own.
 

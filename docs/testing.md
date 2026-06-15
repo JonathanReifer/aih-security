@@ -63,7 +63,7 @@ Use this when testing on a real fresh machine (not Docker).
 ### Install
 
 ```bash
-git clone ssh://git@gitlab.rsolabs.com:223/ai/aih-security.git ~/Projects/aih-security
+git clone https://github.com/JonathanReifer/aih-security.git ~/Projects/aih-security
 bash ~/Projects/aih-security/install.sh
 ```
 
@@ -91,7 +91,7 @@ echo $LLM_PRIVACY_HMAC_KEY    # should print a base64 string
 
 **Step 4 — Proxy running**
 ```bash
-~/Projects/llm-privacy-proxy/proxy.sh status
+~/Projects/aih-privacy-proxy/proxy.sh status
 # Status: running (PID XXXXX)
 # Vault: sqlite
 
@@ -109,7 +109,7 @@ python3 -m json.tool ~/.claude/settings.json | grep -A2 'ANTHROPIC_BASE_URL'
 
 Restart Claude Code (close and reopen the session). On first prompt, check:
 ```bash
-~/Projects/llm-privacy-proxy/proxy.sh status
+~/Projects/aih-privacy-proxy/proxy.sh status
 # Should show running if SessionStart hook fired
 ```
 

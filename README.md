@@ -14,9 +14,9 @@ templates.
 
 | Project | What it does |
 |---------|-------------|
-| [llm-privacy-proxy](../llm-privacy-proxy/) | Transparent bidirectional tokenization proxy — sits between Claude Code and `api.anthropic.com`, tokenizes secrets/PII in outbound requests and detokenizes responses |
-| [llm-privacy-middleware](../llm-privacy-middleware/) | Hook-based privacy guard — intercepts Bash/Write/Edit tool calls, blocks or asks on secrets and PII |
-| [llm_prompt_protection](../llm_prompt_protection/) | MITRE ATLAS injection/adversarial detector — covers AML.T0051 through AML.T0098 |
+| [aih-privacy-proxy](../aih-privacy-proxy/) | Transparent bidirectional tokenization proxy — sits between Claude Code and `api.anthropic.com`, tokenizes secrets/PII in outbound requests and detokenizes responses |
+| [aih-privacy-middleware](../aih-privacy-middleware/) | Hook-based privacy guard — intercepts Bash/Write/Edit tool calls, blocks or asks on secrets and PII |
+| [aih-prompt-protection](../aih-prompt-protection/) | MITRE ATLAS injection/adversarial detector — covers AML.T0051 through AML.T0098 |
 | [supply-guard-hook](../supply-guard-hook/) | Package install interceptor — typosquatting, known-malicious packages, new/unpopular packages, custom registry overrides |
 | [aih-conversation-viewer](../aih-conversation-viewer/) | Session viewer — conversation bubbles, tool decisions, PII detection, and ATLAS security findings per session |
 | [aih-observability](../aih-observability/) | Optional OTEL + Loki + Prometheus + Grafana stack — hook telemetry, session cost, tool decision timelines |
@@ -27,7 +27,7 @@ templates.
 
 ```bash
 # Clone this repo, then run the unified installer
-git clone ssh://git@gitlab.rsolabs.com:223/ai/aih-security.git ~/Projects/aih-security
+git clone https://github.com/JonathanReifer/aih-security.git ~/Projects/aih-security
 bash ~/Projects/aih-security/install.sh
 ```
 
@@ -41,9 +41,9 @@ the full step-by-step guide.
 
 | Tier | Projects | What you get |
 |------|----------|--------------|
-| **1 — Proxy** | llm-privacy-proxy | Transparent tokenization on all LLM traffic |
-| **2 — Standard** | + llm-privacy-middleware | Hook-level PII/secrets guard on tool calls |
-| **3 — Full Stack** | + llm_prompt_protection + supply-guard-hook | ATLAS injection detection + supply chain protection |
+| **1 — Proxy** | aih-privacy-proxy | Transparent tokenization on all LLM traffic |
+| **2 — Standard** | + aih-privacy-middleware | Hook-level PII/secrets guard on tool calls |
+| **3 — Full Stack** | + aih-prompt-protection + supply-guard-hook | ATLAS injection detection + supply chain protection |
 
 ```bash
 bash install.sh --tier=1   # proxy only

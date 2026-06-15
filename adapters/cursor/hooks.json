@@ -2,12 +2,12 @@
   "hooks": {
     "beforeSubmitPrompt": [
       {
-        "command": "bun $HOME/Projects/llm-privacy-middleware/src/hooks/PrivacyPromptGuard.hook.ts"
+        "command": "bun $HOME/Projects/aih-privacy-middleware/src/hooks/PrivacyPromptGuard.hook.ts"
       }
     ],
     "preToolUse": [
       {
-        "command": "bun $HOME/Projects/llm-privacy-middleware/src/hooks/PrivacyToolGuard.hook.ts"
+        "command": "bun $HOME/Projects/aih-privacy-middleware/src/hooks/PrivacyToolGuard.hook.ts"
       }
     ],
     "beforeShellExecution": [

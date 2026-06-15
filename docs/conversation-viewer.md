@@ -98,7 +98,7 @@ OTEL (optional, Tier 3 with Loki)
 ```bash
 # Terminal 1: proxy
 source ~/.llm-privacy/.env.sh
-LLM_PRIVACY_LOG_PROMPTS=tokenized ~/Projects/llm-privacy-proxy/proxy.sh start
+LLM_PRIVACY_LOG_PROMPTS=tokenized ~/Projects/aih-privacy-proxy/proxy.sh start
 
 # Terminal 2: viewer
 cd ~/Projects/aih-conversation-viewer
@@ -111,7 +111,7 @@ Or add a start script:
 ```bash
 # ~/Projects/aih-security/start-viewer.sh
 source ~/.llm-privacy/.env.sh
-LLM_PRIVACY_LOG_PROMPTS=tokenized ~/Projects/llm-privacy-proxy/proxy.sh start
+LLM_PRIVACY_LOG_PROMPTS=tokenized ~/Projects/aih-privacy-proxy/proxy.sh start
 echo "Starting viewer at http://localhost:4446..."
 bun ~/Projects/aih-conversation-viewer/src/server.ts
 ```

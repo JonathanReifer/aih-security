@@ -1,12 +1,12 @@
 // aih-security OpenCode plugin
 // Place at: .opencode/plugins/aih-security.ts (or anywhere OpenCode loads plugins from)
 //
-// Integrates llm_prompt_protection and supply-guard-hook into OpenCode's
+// Integrates aih-prompt-protection and supply-guard-hook into OpenCode's
 // tool.execute.before lifecycle. Modules are imported directly — no shell exec overhead.
 //
 // Requires: both project repos adjacent to this repo, or adjust import paths below.
 
-import { LlmProtectionHookModule } from "../../llm_prompt_protection/src/adapters/hook-module.js";
+import { LlmProtectionHookModule } from "../../aih-prompt-protection/src/adapters/hook-module.js";
 import { SupplyChainHookModule } from "../../supply-guard-hook/src/modules/index.js";
 
 const atlasModule = new LlmProtectionHookModule();
