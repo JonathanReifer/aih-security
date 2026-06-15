@@ -184,7 +184,7 @@ fi
 
 if [ "$TIER" -ge 3 ]; then
   clone_or_update "aih-prompt-protection"  "${GITHUB_BASE}/aih-prompt-protection.git"
-  clone_or_update "supply-guard-hook"      "ssh://git@gitlab.rsolabs.com:223/ai/supply-guard-hook.git"
+  clone_or_update "supply-guard-hook"      "${GITHUB_BASE}/supply-guard-hook.git"
 fi
 
 # ── Step 5: Install dependencies ──────────────────────────────────────────

@@ -207,7 +207,7 @@ cd ~/Projects
 git clone https://github.com/JonathanReifer/aih-prompt-protection.git
 cd aih-prompt-protection && bun install && cd ..
 
-git clone ssh://git@gitlab.rsolabs.com:223/ai/supply-guard-hook.git
+git clone https://github.com/JonathanReifer/supply-guard-hook.git
 cd supply-guard-hook && bun install && cd ..
 ```
 
