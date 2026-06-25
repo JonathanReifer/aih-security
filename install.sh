@@ -286,6 +286,12 @@ case "$OBS_CHOICE" in
       clone_or_update "aih-observability" "${GITHUB_BASE}/aih-observability.git"
       OBS_DIR="${PROJECTS_DIR}/aih-observability"
       if [ -d "$OBS_DIR" ]; then
+        OTEL_CONFIG="${OBS_DIR}/config/otel/config.yaml"
+        OTEL_EXAMPLE="${OBS_DIR}/config/otel/config.yaml.example"
+        if [ ! -f "$OTEL_CONFIG" ] && [ -f "$OTEL_EXAMPLE" ]; then
+          cp "$OTEL_EXAMPLE" "$OTEL_CONFIG"
+          ok "Created config/otel/config.yaml from example"
+        fi
         echo "  Starting aih-observability..."
         (cd "$OBS_DIR" && docker compose up -d) 2>/dev/null
         ok "aih-observability started — Grafana: http://localhost:3001 (admin/aih)"
