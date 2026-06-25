@@ -407,6 +407,7 @@ options, see [docs/observability.md](docs/observability.md).
 → The proxy detected a secret/PII pattern and hard-blocking is enabled.
 To switch to monitor-only mode (tokenize but never block), set `LLM_PRIVACY_BLOCK_ENABLED=false` in `~/.llm-privacy/.env.sh` and restart the proxy.
 To re-enable blocking: set `LLM_PRIVACY_BLOCK_ENABLED=true`.
+For all bypass methods (per-session, stop daemon, permanent disable, and re-enable steps), see [docs/bypass.md](docs/bypass.md).
 
 **Proxy returns `vaultMode: "memory"`**
 → `LLM_PRIVACY_VAULT_KEY` not in proxy's environment.

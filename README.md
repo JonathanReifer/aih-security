@@ -93,6 +93,7 @@ Ports: **OTEL** 4317/4318 · **Loki** 3100 · **Prometheus** 9090 · **Grafana**
 - [docs/harness-adapters.md](docs/harness-adapters.md) — Cursor, OpenCode, Grok Build setup
 - [docs/conversation-viewer.md](docs/conversation-viewer.md) — connecting aih-conversation-viewer
 - [docs/observability.md](docs/observability.md) — local and remote observability setup
+- [docs/bypass.md](docs/bypass.md) — how to bypass or temporarily disable the proxy
 
 ---
 
@@ -106,7 +107,8 @@ aih-security/
 ├── docs/
 │   ├── testing.md        # Smoke tests and manual verification
 │   ├── harness-adapters.md   # Multi-harness setup reference
-│   └── conversation-viewer.md # Viewer integration guide
+│   ├── conversation-viewer.md # Viewer integration guide
+│   └── bypass.md             # Proxy bypass and temporary disable guide
 ├── test/
 │   ├── Dockerfile.debian     # Fresh Debian 12 test image
 │   ├── run-tests.sh          # Automated smoke test suite
