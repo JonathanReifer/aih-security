@@ -242,6 +242,23 @@ write_env() {
   fi
 }
 
+# ── Step 6.4: Blocking mode ───────────────────────────────────────────────
+
+print_step "Blocking mode"
+echo ""
+echo "  When a secret or PII pattern is detected in a prompt or tool call, the proxy can:"
+echo "    Y) Monitor only — log the finding, tokenize, and continue (recommended)"
+echo "    N) Hard-block   — return HTTP 400 and refuse to forward the request"
+echo ""
+
+if ask_yes "Enable hard-blocking? (default: No — monitor only)" "N"; then
+  write_env "LLM_PRIVACY_BLOCK_ENABLED" "true"
+  ok "Hard-blocking enabled (LLM_PRIVACY_BLOCK_ENABLED=true)"
+else
+  write_env "LLM_PRIVACY_BLOCK_ENABLED" "false"
+  ok "Monitor-only mode (LLM_PRIVACY_BLOCK_ENABLED=false) — tokenization still active"
+fi
+
 # ── Step 6.5: Observability (optional) ────────────────────────────────────
 
 print_step "Observability (optional)"

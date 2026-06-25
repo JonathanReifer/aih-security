@@ -377,6 +377,7 @@ options, see [docs/observability.md](docs/observability.md).
 | `LLM_PRIVACY_VAULT_PATH` | proxy, middleware | `~/.llm-privacy/vault.db` / `vault.enc.json` | Override vault location. |
 | `LLM_PRIVACY_AUDIT_PATH` | middleware | `~/.llm-privacy/audit.jsonl` | Override audit log path. |
 | `LLM_PRIVACY_MODE` | middleware | `permissive` | `strict` hard-blocks PII; `permissive` asks. |
+| `LLM_PRIVACY_BLOCK_ENABLED` | proxy | unset (off) | Set to `true` to hard-block requests with detected patterns. Default (unset) is monitor-only: patterns are detected and logged, tokenization occurs, but the proxy never returns HTTP 400. |
 | `LLM_PRIVACY_LOG_PROMPTS` | proxy | `none` | `tokenized` or `full` to enable prompt logging. |
 | `PROXY_BACKEND` | proxy | `anthropic` | `ollama` for local model routing. |
 
@@ -401,6 +402,11 @@ options, see [docs/observability.md](docs/observability.md).
 ---
 
 ## Troubleshooting
+
+**API Error: 400 `{"error":"blocked",...}`**
+→ The proxy detected a secret/PII pattern and hard-blocking is enabled.
+To switch to monitor-only mode (tokenize but never block), set `LLM_PRIVACY_BLOCK_ENABLED=false` in `~/.llm-privacy/.env.sh` and restart the proxy.
+To re-enable blocking: set `LLM_PRIVACY_BLOCK_ENABLED=true`.
 
 **Proxy returns `vaultMode: "memory"`**
 → `LLM_PRIVACY_VAULT_KEY` not in proxy's environment.
