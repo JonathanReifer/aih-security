@@ -1,5 +1,7 @@
-# Supply chain payloads that should be blocked (known malicious or typosquat)
-pip install coloama
-pip install requets
-npm install crossenv
-bun add lodahs
+# Supply chain payloads that should be blocked (known malicious — in threat DB)
+# All entries here must have a hard block (exit 2), not just an ask (exit 0).
+# Add to supply-guard-hook/src/threats/knownMalicious.ts when adding new entries.
+pip install coloama   # typosquat of colorama — credential harvester (2022)
+pip install requets   # typosquat of requests — transposition attack
+npm install crossenv  # typosquat of cross-env — env var exfiltration (2017)
+bun add lodahs        # typosquat of lodash — transposition attack
