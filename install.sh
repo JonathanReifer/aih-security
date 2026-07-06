@@ -259,6 +259,18 @@ else
   ok "Monitor-only mode (LLM_PRIVACY_BLOCK_ENABLED=false) — tokenization still active"
 fi
 
+# ── Step 6.45: Prompt logging (feeds aih-conversation-viewer) ──────────────
+
+print_step "Prompt logging"
+echo ""
+echo "  aih-conversation-viewer reads its session list from the proxy's prompt log."
+echo "  Without this, the viewer will show zero sessions even with a healthy proxy."
+echo ""
+
+write_env "LLM_PRIVACY_LOG_PROMPTS" "tokenized"
+write_env "LLM_PRIVACY_LOG_PATH" "${LLM_PRIVACY_DIR}/prompts.jsonl"
+ok "Prompt logging enabled (LLM_PRIVACY_LOG_PROMPTS=tokenized)"
+
 # ── Step 6.5: Observability (optional) ────────────────────────────────────
 
 print_step "Observability (optional)"
