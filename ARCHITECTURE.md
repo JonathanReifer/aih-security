@@ -66,6 +66,15 @@ npm, bun, cargo, gem, and other package managers; scores for typosquatting, know
 packages, low popularity, custom registry overrides, and exec-mode risk. Can run standalone
 or as `SupplyChainHookModule` registered into the middleware pipeline.
 
+**`supply-guard-proxy`** — Network-level companion to `supply-guard-hook`, evaluating the same
+policy dimensions (package/version age, download counts, registry overrides) but outside the
+diagram above entirely: it's a standalone local HTTP proxy that `pip`/`npm`/`cargo`/`brew` are
+pointed at directly via their own config files, not a hook wired into a harness lifecycle
+event. This means it also covers package installs the hook layer never sees — CI runs, a bare
+terminal, non-Claude-Code tooling — at the cost of being a system-wide config change rather
+than a scoped hook. Runs independently of both the hook pipeline and the privacy proxy; no
+shared process, port, or module interface with either.
+
 ---
 
 ## Module Interface

@@ -18,6 +18,7 @@ templates.
 | [aih-privacy-middleware](https://github.com/JonathanReifer/aih-privacy-middleware) | Hook-based privacy guard — intercepts Bash/Write/Edit tool calls, blocks or asks on secrets and PII |
 | [aih-prompt-protection](https://github.com/JonathanReifer/aih-prompt-protection) | MITRE ATLAS injection/adversarial detector — covers AML.T0051 through AML.T0098 |
 | [supply-guard-hook](https://github.com/JonathanReifer/supply-guard-hook) | Package install interceptor — typosquatting, known-malicious packages, new/unpopular packages, custom registry overrides |
+| [supply-guard-proxy](https://github.com/JonathanReifer/supply-guard-proxy) | Network-level companion to supply-guard-hook — local HTTP proxy that enforces the same package-age/download-count/registry policy for pip/npm/cargo outside the harness hook lifecycle too |
 | [aih-conversation-viewer](https://github.com/JonathanReifer/aih-conversation-viewer) | Session viewer — conversation bubbles, tool decisions, PII detection, and ATLAS security findings per session |
 | [aih-observability](https://github.com/JonathanReifer/aih-observability) | Optional OTEL + Loki + Prometheus + Grafana stack — hook telemetry, session cost, tool decision timelines |
 
@@ -70,6 +71,30 @@ Supports two deployment modes:
 automatically. For manual setup, see [docs/observability.md](docs/observability.md).
 
 Ports: **OTEL** 4317/4318 · **Loki** 3100 · **Prometheus** 9090 · **Grafana** 3001
+
+---
+
+## Optional: Supply-Guard Proxy
+
+`supply-guard-proxy` is a standalone companion to `supply-guard-hook`. Where the hook only
+sees package installs that go through a Claude-Code-instrumented `Bash` tool call,
+the proxy enforces the same supply-chain policy (package age, download counts, registry
+overrides) at the network layer — so it also covers installs from CI pipelines, a plain
+terminal, or any tool outside the hook lifecycle.
+
+It's a local HTTP proxy that `pip`, `npm`, `cargo`, and `brew` are redirected to via their
+native config files (`pip.conf`, `.npmrc`, `cargo/config.toml`) — no CA cert, no HTTPS
+interception. Because that redirect is a system-wide config change (not scoped to Claude
+Code), `install.sh` clones it at Tier 3 but does not auto-run its setup:
+
+```bash
+cd ~/Projects/supply-guard-proxy
+pip install -r requirements.txt && ./scripts/setup.sh
+./scripts/proxy.sh start
+```
+
+See the [supply-guard-proxy README](https://github.com/JonathanReifer/supply-guard-proxy) for
+policy configuration (`rules.yaml`) and manual verification steps.
 
 ---
 

@@ -287,6 +287,45 @@ echo '{"prompt":"fix the null check in auth.ts"}' | \
 
 ---
 
+## Supply-Guard Proxy (Optional)
+
+`supply-guard-proxy` is a standalone network-level companion to `supply-guard-hook`. The
+hook only sees package installs that go through a Claude-Code `Bash` tool call —
+the proxy enforces the same policy (package age, download counts, registry overrides) for
+any `pip`/`npm`/`cargo`/`brew` traffic on the box, including CI pipelines and plain terminal
+use outside the harness entirely.
+
+`install.sh` clones it at Tier 3 alongside `supply-guard-hook`, but does not run its setup
+automatically — unlike everything else in this guide, its setup patches system-wide config
+(`~/.pip/pip.conf`, `~/.npmrc`, `~/.cargo/config.toml`) to redirect traffic through the proxy,
+which is a bigger change than this installer makes silently for you.
+
+### Enable it
+
+```bash
+cd ~/Projects/supply-guard-proxy
+pip install -r requirements.txt
+./scripts/setup.sh
+./scripts/proxy.sh start
+./scripts/proxy.sh status
+```
+
+### Verify
+
+```bash
+curl -s http://localhost:8899/health
+# → {"status": "ok", "version": "0.1.0", "port": 8899}
+
+# Old packages should still resolve through the proxy
+curl -s http://localhost:8899/pypi/simple/requests/ | grep -c href
+```
+
+Policy lives in `~/.supply-guard/rules.yaml` (defaults: 24h min version age). See the
+[supply-guard-proxy README](https://github.com/JonathanReifer/supply-guard-proxy) for the
+full rule set and wrapper-script (`sg-pip`, `sg-npm`) usage.
+
+---
+
 ## Observability (Optional)
 
 The `aih-observability` stack adds OTEL-based telemetry: hook execution timelines, per-tool

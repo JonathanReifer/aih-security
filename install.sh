@@ -185,6 +185,7 @@ fi
 if [ "$TIER" -ge 3 ]; then
   clone_or_update "aih-prompt-protection"  "${GITHUB_BASE}/aih-prompt-protection.git"
   clone_or_update "supply-guard-hook"      "${GITHUB_BASE}/supply-guard-hook.git"
+  clone_or_update "supply-guard-proxy"     "${GITHUB_BASE}/supply-guard-proxy.git"
 fi
 
 # ── Step 5: Install dependencies ──────────────────────────────────────────
@@ -517,6 +518,16 @@ if [ -d "${PROJECTS_DIR}/aih-conversation-viewer" ]; then
   echo "    source ${ENV_FILE}"
   echo "    bun ${PROJECTS_DIR}/aih-conversation-viewer/src/server.ts"
   echo "    → http://localhost:4446"
+  echo ""
+fi
+if [ "$TIER" -ge 3 ] && [ -d "${PROJECTS_DIR}/supply-guard-proxy" ]; then
+  echo "  supply-guard-proxy (optional, not auto-configured):"
+  echo "    Network-level companion to supply-guard-hook. Patches pip/npm/cargo"
+  echo "    config to route through a local policy-enforcing proxy — a system-wide"
+  echo "    change, so it's cloned but not run automatically. To enable:"
+  echo "      cd ${PROJECTS_DIR}/supply-guard-proxy"
+  echo "      pip install -r requirements.txt && ./scripts/setup.sh"
+  echo "      ./scripts/proxy.sh start"
   echo ""
 fi
 echo "  Docs:"
