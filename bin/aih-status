@@ -172,10 +172,14 @@ async function buildSnapshot(windowDays = 7): Promise<Snapshot> {
   for (const e of supplyGuardEvents(since)) {
     const ts = Date.parse(String(e.timestamp ?? ""));
     if (!Number.isFinite(ts)) continue;
+    const b = bucketFor(ts);
     if (String(e.decision ?? "") === "block") {
-      const b = bucketFor(ts);
       if (b) b.supplyBlocked++;
       if (ts >= since24h) w24.supplyBlocked++;
+    }
+    if (e.degraded === true) {
+      if (b) b.degraded++;
+      if (ts >= since24h) w24.degraded++;
     }
   }
 
