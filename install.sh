@@ -1,11 +1,22 @@
 #!/usr/bin/env bash
 # install.sh — unified installer for the aih-security stack
 # Usage: bash install.sh [--tier=1|2|3] [--dir=PATH] [--skip-clone]
+#        bash install.sh --disable
+#        bash install.sh --uninstall [--purge]
 #
 # Tiers:
 #   1 — proxy only (transparent tokenization)
 #   2 — proxy + middleware (hook-based PII guard)
 #   3 — full stack: proxy + middleware + prompt-protection + supply-guard (default)
+#
+# Modes:
+#   (default)    — install/update at the given tier
+#   --disable    — stop the proxy and remove aih-security's hooks/env from
+#                  ~/.claude/settings.json, leaving cloned repos and keys/vault
+#                  data in place. Re-run install.sh normally to re-enable.
+#   --uninstall  — everything --disable does, plus removes the shell RC
+#                  source line. Add --purge to also delete cloned repos and
+#                  ~/.llm-privacy (keys, vault, logs) after confirmation.
 
 set -euo pipefail
 
@@ -17,6 +28,9 @@ SKIP_CLONE=false
 LLM_PRIVACY_DIR="${LLM_PRIVACY_DIR:-${HOME}/.llm-privacy}"
 ENV_FILE="${LLM_PRIVACY_DIR}/.env.sh"
 CLAUDE_SETTINGS="${HOME}/.claude/settings.json"
+DISABLE=false
+UNINSTALL=false
+PURGE=false
 
 # ── Arg parsing ───────────────────────────────────────────────────────────
 
@@ -25,8 +39,13 @@ for arg in "$@"; do
     --tier=*)  TIER="${arg#*=}" ;;
     --dir=*)   PROJECTS_DIR="${arg#*=}" ;;
     --skip-clone) SKIP_CLONE=true ;;
+    --disable) DISABLE=true ;;
+    --uninstall) UNINSTALL=true ;;
+    --purge) PURGE=true ;;
     --help|-h)
       echo "Usage: bash install.sh [--tier=1|2|3] [--dir=PATH] [--skip-clone]"
+      echo "       bash install.sh --disable"
+      echo "       bash install.sh --uninstall [--purge]"
       exit 0
       ;;
   esac
@@ -67,6 +86,166 @@ wire_rc() {
     ok "Source line added to ${rc}"
   fi
 }
+
+unwire_rc() {
+  local rc="$1"
+  [ -f "$rc" ] || return 0
+  if grep -q '.llm-privacy/.env.sh' "$rc" 2>/dev/null; then
+    # Remove the marker comment line and the source line that follows it
+    sed -i.bak -e '/# aih-security: load LLM privacy keys/d' \
+               -e '/\.llm-privacy\/\.env\.sh/d' "$rc" && rm -f "${rc}.bak"
+    ok "Removed .env.sh sourcing from ${rc}"
+  fi
+}
+
+# ── Disable / Uninstall ────────────────────────────────────────────────────
+
+stop_proxy() {
+  local candidate
+  for candidate in "${PROJECTS_DIR}/aih-privacy-proxy/proxy.sh" "${HOME}/.claude/llm-privacy-proxy/proxy.sh"; do
+    if [ -x "$candidate" ]; then
+      "$candidate" stop 2>/dev/null || true
+    fi
+  done
+  # Fallback: kill anything still listening on the proxy ports directly,
+  # in case neither known proxy.sh copy is present/executable.
+  local port pid
+  for port in 4444 4445; do
+    pid="$(lsof -ti "tcp:${port}" -sTCP:LISTEN 2>/dev/null || true)"
+    if [ -n "$pid" ]; then
+      kill -TERM "$pid" 2>/dev/null || true
+      sleep 1
+      kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
+      ok "Stopped process on port ${port} (was PID ${pid})"
+    fi
+  done
+}
+
+cmd_disable() {
+  print_step "Disabling aih-security"
+
+  if [ -f "$CLAUDE_SETTINGS" ]; then
+    local backup="${CLAUDE_SETTINGS}.bak-$(date +%Y%m%d%H%M%S)"
+    cp "$CLAUDE_SETTINGS" "$backup"
+    ok "Backed up settings to ${backup}"
+
+    python3 - "$CLAUDE_SETTINGS" <<'PYEOF'
+import sys, json, re
+
+settings_path = sys.argv[1]
+
+with open(settings_path, 'r') as f:
+    raw = f.read()
+raw = re.sub(r',(\s*[}\]])', r'\1', raw)
+settings = json.loads(raw)
+
+changed = []
+
+env = settings.get('env', {})
+if 'ANTHROPIC_BASE_URL' in env:
+    del env['ANTHROPIC_BASE_URL']
+    changed.append("  - ANTHROPIC_BASE_URL removed")
+
+hooks = settings.get('hooks', {})
+
+def strip(event, needle_fn):
+    entries = hooks.get(event)
+    if not entries:
+        return
+    kept = [e for e in entries if not needle_fn(e)]
+    removed = len(entries) - len(kept)
+    if removed:
+        if kept:
+            hooks[event] = kept
+        else:
+            del hooks[event]
+        changed.append(f"  - {event}: removed {removed} aih-security hook(s)")
+
+strip('SessionStart', lambda e: 'proxy.sh' in str(e))
+strip('UserPromptSubmit', lambda e: 'PrivacyPromptGuard' in str(e))
+strip('PreToolUse', lambda e: 'PrivacyToolGuard' in str(e) or 'SupplyGuard.hook.ts' in str(e))
+strip('Stop', lambda e: 'PrivacyResponseScanner' in str(e))
+
+if changed:
+    with open(settings_path, 'w') as f:
+        json.dump(settings, f, indent=2)
+        f.write('\n')
+    for msg in changed:
+        print(msg)
+    print(f"  ✓ {settings_path} updated")
+else:
+    print("  ✓ No aih-security entries found in settings.json — already disabled")
+PYEOF
+  else
+    warn "${CLAUDE_SETTINGS} not found — nothing to unwire"
+  fi
+
+  stop_proxy
+
+  echo ""
+  echo "  aih-security disabled: proxy stopped, hooks removed, ANTHROPIC_BASE_URL cleared."
+  echo "  New Claude Code sessions will talk to the real Anthropic API directly."
+  echo "  NOTE: any session already running (including this one, if applicable) keeps"
+  echo "  its old ANTHROPIC_BASE_URL in its own process environment until restarted."
+  echo ""
+  echo "  To re-enable: bash install.sh --tier=N"
+}
+
+cmd_uninstall() {
+  cmd_disable
+
+  print_step "Removing shell RC wiring"
+  unwire_rc "${HOME}/.bashrc"
+  unwire_rc "${HOME}/.zshrc"
+  unwire_rc "${HOME}/.bash_profile"
+  unwire_rc "${HOME}/.config/fish/config.fish"
+
+  local repos=(aih-privacy-proxy aih-privacy-middleware aih-prompt-protection \
+               supply-guard-hook supply-guard-proxy aih-observability aih-conversation-viewer)
+
+  if [ "$PURGE" != "true" ]; then
+    print_step "Uninstall complete (data preserved)"
+    echo "  Left in place (re-run with --purge to remove):"
+    for r in "${repos[@]}"; do
+      [ -d "${PROJECTS_DIR}/${r}" ] && echo "    ${PROJECTS_DIR}/${r}"
+    done
+    [ -d "$LLM_PRIVACY_DIR" ] && echo "    ${LLM_PRIVACY_DIR} (keys, vault, logs)"
+    echo ""
+    return 0
+  fi
+
+  print_step "Purging data and cloned repos"
+  echo "  This will permanently delete:"
+  for r in "${repos[@]}"; do
+    [ -d "${PROJECTS_DIR}/${r}" ] && echo "    ${PROJECTS_DIR}/${r}"
+  done
+  [ -d "$LLM_PRIVACY_DIR" ] && echo "    ${LLM_PRIVACY_DIR} (keys, vault, logs)"
+  echo ""
+  if ask_yes "Proceed with permanent deletion?" "N"; then
+    for r in "${repos[@]}"; do
+      if [ -d "${PROJECTS_DIR}/${r}" ]; then
+        rm -rf "${PROJECTS_DIR}/${r}"
+        ok "Removed ${PROJECTS_DIR}/${r}"
+      fi
+    done
+    if [ -d "$LLM_PRIVACY_DIR" ]; then
+      rm -rf "$LLM_PRIVACY_DIR"
+      ok "Removed ${LLM_PRIVACY_DIR}"
+    fi
+  else
+    warn "Purge cancelled — repos and ${LLM_PRIVACY_DIR} left in place"
+  fi
+}
+
+if [ "$DISABLE" = "true" ]; then
+  cmd_disable
+  exit 0
+fi
+
+if [ "$UNINSTALL" = "true" ]; then
+  cmd_uninstall
+  exit 0
+fi
 
 # ── Step 1: Detect platform ───────────────────────────────────────────────
 
