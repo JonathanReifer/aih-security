@@ -7,7 +7,7 @@ optional — the security tiers work without it — but once running it adds:
 - Full hook execution timelines per session
 - Per-tool decision history (auto / approved / blocked / rejected)
 - Per-session API cost tracking
-- Security finding history (when OTEL emission is added to the proxy — planned)
+- Security finding history (proxy/middleware OTLP LogRecord emission, opt-in via `OTEL_EXPORTER_OTLP_ENDPOINT`)
 
 ---
 
@@ -109,8 +109,12 @@ PII match rates from the proxy.
 | Source | Data | Status |
 |--------|------|--------|
 | PAI OTEL hook | Hook execution timelines, tool decisions, session cost | Available now |
-| aih-privacy-proxy | Security scan findings as OTEL spans | Planned (Phase 4) |
-| aih-privacy-middleware | Block/ask decisions as OTEL spans | Planned (Phase 4) |
+| aih-privacy-proxy | Security scan findings as OTLP LogRecords | Implemented (opt-in) |
+| aih-privacy-middleware | Block/ask decisions as OTLP LogRecords | Implemented (opt-in, privacy module) |
+| supply-guard-hook / -proxy | Package-install decisions as OTLP LogRecords | Implemented (opt-in) |
 
-The collection infrastructure is ready. OTEL emission from the proxy and middleware is
-listed as deferred work in `ARCHITECTURE.md`.
+All four producers emit OTLP/HTTP **LogRecords** (not spans) via a hand-rolled emitter
+(`src/telemetry/otel.ts` / `.py`), active only when `OTEL_EXPORTER_OTLP_ENDPOINT` (or
+`OTEL_EXPORTER_OTLP_ENDPOINT_HTTP`) is set. Still deferred: the middleware emits only from the
+privacy module (not pipeline-level), the `degraded` flag is computed but not emitted, and there is
+no dedicated findings dashboard — see `ARCHITECTURE.md` Deferred Work and `docs/telemetry-schema.md`.

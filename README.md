@@ -33,8 +33,24 @@ bash ~/Projects/aih-security/install.sh
 ```
 
 The installer clones all four component repos, generates encryption keys, configures
-`~/.claude/settings.json`, and runs a smoke test. See [QUICKSTART.md](QUICKSTART.md) for
-the full step-by-step guide.
+`~/.claude/settings.json`, and runs a smoke test. It also registers a `SessionStart` hook
+that prints a one-line health summary (`bin/aih-status --brief`) at the top of every
+session. See [QUICKSTART.md](QUICKSTART.md) for the full step-by-step guide.
+
+**Check status any time:**
+
+```bash
+bin/aih-status            # 7-day table: proxy health, block/ask/degraded, supply-chain blocks
+bin/aih-status --brief    # one line (what the SessionStart hook prints)
+```
+
+**Disable or remove:**
+
+```bash
+bash install.sh --disable            # stop proxy, remove hooks + ANTHROPIC_BASE_URL (keeps repos/keys)
+bash install.sh --uninstall          # also remove the shell RC source line
+bash install.sh --uninstall --purge  # also delete cloned repos and ~/.llm-privacy (after confirmation)
+```
 
 ---
 
@@ -126,7 +142,9 @@ policy configuration (`rules.yaml`) and manual verification steps.
 
 ```
 aih-security/
-├── install.sh            # Unified installer (all tiers, Linux + macOS)
+├── install.sh            # Unified installer (all tiers, --disable / --uninstall)
+├── bin/
+│   └── aih-status        # Default-on health/decision status (SessionStart hook)
 ├── QUICKSTART.md         # End-to-end installation guide
 ├── ARCHITECTURE.md       # System design and module interfaces
 ├── docs/

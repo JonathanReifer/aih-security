@@ -440,6 +440,40 @@ options, see [docs/observability.md](docs/observability.md).
 
 ---
 
+## Checking Status
+
+`bin/aih-status` (installed with the umbrella repo, no dependencies) reads the logs above plus
+the proxy `/health` endpoint and prints a summary. It is read-only — it writes nothing.
+
+```bash
+~/Projects/aih-security/bin/aih-status            # 7-day table + health header
+~/Projects/aih-security/bin/aih-status --brief    # one line
+~/Projects/aih-security/bin/aih-status --json     # machine-readable snapshot
+```
+
+`install.sh` registers `aih-status --brief` as a `SessionStart` hook, so a health line —
+proxy up/down, vault mode, 24h block/ask/degraded counts, supply-chain blocks — appears at the
+top of every new session with no dashboard required. A `vaultMode: memory` warning here means
+the proxy's encryption keys are not loaded (see Troubleshooting).
+
+---
+
+## Disabling and Uninstalling
+
+```bash
+bash install.sh --disable            # stop the proxy; remove aih-security hooks + ANTHROPIC_BASE_URL
+                                     # from ~/.claude/settings.json. Cloned repos and ~/.llm-privacy
+                                     # (keys, vault, logs) are left in place. Re-run install.sh to re-enable.
+bash install.sh --uninstall          # everything --disable does, plus remove the shell RC source line.
+bash install.sh --uninstall --purge  # also delete cloned repos and ~/.llm-privacy after confirmation.
+```
+
+`--disable` removes only aih-security's own hook entries; any other `SessionStart`/`PreToolUse`
+hooks you added are preserved. For temporary, per-session bypass without changing config, see
+[docs/bypass.md](docs/bypass.md).
+
+---
+
 ## Troubleshooting
 
 **API Error: 400 `{"error":"blocked",...}`**

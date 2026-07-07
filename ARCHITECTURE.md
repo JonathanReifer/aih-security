@@ -206,6 +206,24 @@ This repo ships adapter templates for each:
 | AML.T0098 | Credential Harvesting | ToolAbuseScanner | PreToolUse (Bash/Write/Edit) |
 | AML.T0010 | Supply Chain Compromise | SupplyChainHookModule | PreToolUse (Bash) |
 
+> **Default-install caveat:** these scanners live in `aih-prompt-protection` and run only when
+> registered into the pipeline. The stock `createDefaultHookPipeline()` /
+> `createDefaultProxyPipeline()` register **only** the privacy module, and `install.sh` wires the
+> stock hook scripts — so a default install does **not** run the ATLAS scanners until the pipeline
+> is configured to register them (QUICKSTART Tier 3 "local pipeline factory" step). Automatic
+> wiring is tracked as the config-driven module loader under [Deferred Work](#deferred-work).
+
+---
+
+## Self-Visibility
+
+`bin/aih-status` (in this umbrella repo) is a zero-dependency, read-only reporter. It reads the
+middleware `audit.jsonl`, the supply-guard daily logs, and the proxy `/health` endpoint and prints
+either a one-line `--brief` summary or a 7-day table (block/ask/degraded counts, supply-chain
+blocks, proxy vault mode). `install.sh` registers `aih-status --brief` as a `SessionStart` hook so
+the summary is visible by default at the start of every session — no observability stack required.
+It writes nothing and never emits token or secret values.
+
 ---
 
 ## Storage Layout
@@ -244,4 +262,4 @@ Every module call is wrapped in `Promise.allSettled`. A module error produces
 | **Canary injection** | Proxy auto-injects `cnry_<token>` into system prompt on outbound |
 | **Config-driven module loader** | YAML config to declare which modules to register |
 | **MCP gateway adapter** | Universal portability for Zed, Continue, Aider via MCP proxy |
-| **OTEL telemetry** | Emit `ScanFinding[]` as OTEL spans; dashboard for block counts |
+| **Telemetry: pipeline-level + `degraded` emission** | OTLP/HTTP **LogRecord** emitters already exist in all four producers (`src/telemetry/otel.ts`/`.py`), opt-in via `OTEL_EXPORTER_OTLP_ENDPOINT`. Remaining: the middleware emits only from the privacy module (not pipeline-level, so other modules' findings are not emitted), the `degraded` flag is computed but not emitted, and there is no findings dashboard. See `docs/telemetry-schema.md`. |
