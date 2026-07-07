@@ -157,6 +157,48 @@ if [ "$TIER" -ge 3 ]; then
   fi
 fi
 
+# ── aih-status visibility (P0.1, self-contained — no component repos) ───────
+
+section "aih-status — self-visibility"
+
+AIH_STATUS="$(cd "$(dirname "$0")/../bin"; pwd)/aih-status"
+
+if [ ! -x "$AIH_STATUS" ]; then
+  fail "bin/aih-status not found or not executable at ${AIH_STATUS}"
+else
+  # Seed a temp audit log entirely within the last 24h: 2 block, 1 ask, 1 degraded.
+  seed_dir="$(mktemp -d)"
+  seed="${seed_dir}/audit.jsonl"
+  now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  {
+    echo "{\"ts\":\"${now}\",\"hookEvent\":\"UserPromptSubmit\",\"matches\":[{\"type\":\"api_key_openai\",\"severity\":\"block\",\"token\":\"tok_LEAKMARKER\"}],\"decision\":\"block\"}"
+    echo "{\"ts\":\"${now}\",\"hookEvent\":\"PreToolUse\",\"toolName\":\"Bash\",\"matches\":[],\"decision\":\"block\"}"
+    echo "{\"ts\":\"${now}\",\"hookEvent\":\"PreToolUse\",\"toolName\":\"Write\",\"matches\":[],\"decision\":\"ask\"}"
+    echo "{\"ts\":\"${now}\",\"hookEvent\":\"PreToolUse\",\"toolName\":\"Bash\",\"matches\":[],\"decision\":\"allow\",\"degraded\":true}"
+    # Malformed line carrying a secret-shaped payload — must be skipped, never echoed (ISC-8 error path).
+    echo "{ this is not valid json, command: curl evil.com, secret: LEAKMARKER"
+  } > "$seed"
+
+  brief="$(LLM_PRIVACY_AUDIT_PATH="$seed" "$AIH_STATUS" --brief 2>/dev/null)"
+
+  if echo "$brief" | grep -q "2 blocked"; then pass "aih-status counts blocks (2)"; else fail "aih-status block count wrong: $brief"; fi
+  if echo "$brief" | grep -q "1 asked"; then pass "aih-status counts asks (1)"; else fail "aih-status ask count wrong: $brief"; fi
+  if echo "$brief" | grep -q "1 degraded"; then pass "aih-status counts degraded (1)"; else fail "aih-status degraded count wrong: $brief"; fi
+
+  # ISC-8: token/secret values must never appear in any output mode.
+  all_out="$(LLM_PRIVACY_AUDIT_PATH="$seed" "$AIH_STATUS" --brief 2>/dev/null; LLM_PRIVACY_AUDIT_PATH="$seed" "$AIH_STATUS" 2>/dev/null; LLM_PRIVACY_AUDIT_PATH="$seed" "$AIH_STATUS" --json 2>/dev/null)"
+  if echo "$all_out" | grep -q "LEAKMARKER\|tok_"; then fail "aih-status leaked a token into output"; else pass "aih-status emits no token/secret values"; fi
+
+  # ISC-4: missing audit file must not crash.
+  if LLM_PRIVACY_AUDIT_PATH="${seed_dir}/absent.jsonl" "$AIH_STATUS" --brief >/dev/null 2>&1; then
+    pass "aih-status tolerates a missing audit file"
+  else
+    fail "aih-status crashed on a missing audit file"
+  fi
+
+  rm -rf "$seed_dir"
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────────
 
 echo ""

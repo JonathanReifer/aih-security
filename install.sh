@@ -24,6 +24,9 @@ set -euo pipefail
 
 TIER=""
 PROJECTS_DIR="${HOME}/Projects"
+# Absolute path to this umbrella repo (where bin/aih-status lives), resolved
+# independent of the caller's cwd so the SessionStart hook path is always correct.
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 SKIP_CLONE=false
 LLM_PRIVACY_DIR="${LLM_PRIVACY_DIR:-${HOME}/.llm-privacy}"
 ENV_FILE="${LLM_PRIVACY_DIR}/.env.sh"
@@ -161,7 +164,7 @@ def strip(event, needle_fn):
             del hooks[event]
         changed.append(f"  - {event}: removed {removed} aih-security hook(s)")
 
-strip('SessionStart', lambda e: 'proxy.sh' in str(e))
+strip('SessionStart', lambda e: 'proxy.sh' in str(e) or 'aih-status' in str(e))
 strip('UserPromptSubmit', lambda e: 'PrivacyPromptGuard' in str(e))
 strip('PreToolUse', lambda e: 'PrivacyToolGuard' in str(e) or 'SupplyGuard.hook.ts' in str(e))
 strip('Stop', lambda e: 'PrivacyResponseScanner' in str(e))
@@ -560,7 +563,7 @@ SG_PATH="${PROJECTS_DIR}/supply-guard-hook"
 if [ ! -f "$CLAUDE_SETTINGS" ]; then
   warn "~/.claude/settings.json not found — skipping (run again after installing Claude Code)"
 else
-  python3 - "$CLAUDE_SETTINGS" "$PROXY_PATH" "$MW_PATH" "$PP_PATH" "$SG_PATH" "$TIER" <<'PYEOF'
+  python3 - "$CLAUDE_SETTINGS" "$PROXY_PATH" "$MW_PATH" "$PP_PATH" "$SG_PATH" "$TIER" "$SELF_DIR" <<'PYEOF'
 import sys, json, re
 
 settings_path = sys.argv[1]
@@ -569,6 +572,7 @@ mw_path       = sys.argv[3]
 pp_path       = sys.argv[4]  # unused at tier<3 but kept for clarity
 sg_path       = sys.argv[5]  # unused at tier<3
 tier          = int(sys.argv[6])
+self_dir      = sys.argv[7]  # aih-security umbrella repo (bin/aih-status)
 proxy_url     = "http://localhost:4444"
 
 with open(settings_path, 'r') as f:
@@ -590,6 +594,12 @@ ss = hooks.setdefault('SessionStart', [])
 if not any('llm-proxy' in str(g) or 'proxy.sh' in str(g) for g in ss):
     ss.append({'hooks': [{'type': 'command', 'command': f'{proxy_path}/proxy.sh start'}]})
     changed.append("  + SessionStart hook (proxy auto-start)")
+
+# SessionStart: default-on visibility line (aih-status --brief)
+status_cmd = f'{self_dir}/bin/aih-status --brief'
+if not any('aih-status' in str(g) for g in ss):
+    ss.append({'hooks': [{'type': 'command', 'command': status_cmd}]})
+    changed.append("  + SessionStart hook (aih-status visibility)")
 
 if tier >= 2:
     # UserPromptSubmit: prompt guard

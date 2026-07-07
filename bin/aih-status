@@ -1,0 +1,250 @@
+#!/usr/bin/env bun
+// aih-status — default-on local visibility for aih-security (P0.1).
+//
+// READ-ONLY. Reads existing logs and the proxy /health endpoint, prints a summary.
+// Writes nothing. Zero runtime dependencies — Bun/Node builtins + global fetch only.
+//
+//   aih-status            7-day table + health header
+//   aih-status --brief    one line (used by the SessionStart hook)
+//   aih-status --json     machine-readable snapshot
+//
+// Sources:
+//   middleware audit  : $LLM_PRIVACY_AUDIT_PATH or ~/.llm-privacy/audit.jsonl
+//   supply-guard      : ~/.supplyguard/logs/YYYY/MM/supplyguard-*.jsonl
+//   proxy health      : GET http://localhost:4444/health
+//   eval history      : ~/.llm-privacy/eval-history.jsonl (written by P0.3; optional)
+
+import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
+
+const HOME = homedir();
+const DAY_MS = 86_400_000;
+// 127.0.0.1 (not "localhost") so an IPv6-first resolver can't report a
+// 127.0.0.1-bound proxy as down.
+const PROXY_HEALTH_URL = "http://127.0.0.1:4444/health";
+const PROXY_TIMEOUT_MS = 500;
+
+type Decision = "allow" | "ask" | "block" | "approve";
+
+interface DayBucket {
+  date: string; // YYYY-MM-DD
+  block: number;
+  ask: number;
+  degraded: number;
+  supplyBlocked: number;
+}
+
+interface Snapshot {
+  proxy: { up: boolean; vaultMode?: string; version?: string; modulesLoaded?: number };
+  degradedProxyVault: boolean;
+  window24h: { block: number; ask: number; degraded: number; supplyBlocked: number };
+  days: DayBucket[];
+  eval?: { detectionRate?: number; fpRate?: number; ageDays?: number };
+  health: "healthy" | "degraded" | "down";
+}
+
+function auditPath(): string {
+  return process.env.LLM_PRIVACY_AUDIT_PATH ?? join(HOME, ".llm-privacy", "audit.jsonl");
+}
+
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Read a JSONL file, yielding parsed objects; tolerant of partial/corrupt lines.
+function readJsonl(path: string): Record<string, unknown>[] {
+  if (!existsSync(path)) return [];
+  let raw: string;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch {
+    return [];
+  }
+  const out: Record<string, unknown>[] = [];
+  for (const line of raw.split("\n")) {
+    const t = line.trim();
+    if (!t) continue;
+    try {
+      out.push(JSON.parse(t));
+    } catch {
+      // skip malformed line — never throw on a bad log entry
+    }
+  }
+  return out;
+}
+
+// Collect supply-guard daily log files for the last `days` days.
+function supplyGuardEvents(sinceMs: number): Record<string, unknown>[] {
+  const base = join(HOME, ".supplyguard", "logs");
+  if (!existsSync(base)) return [];
+  const events: Record<string, unknown>[] = [];
+  // Directory layout: logs/YYYY/MM/supplyguard-YYYYMMDD.jsonl
+  let years: string[] = [];
+  try {
+    years = readdirSync(base);
+  } catch {
+    return [];
+  }
+  for (const y of years) {
+    const yDir = join(base, y);
+    let months: string[] = [];
+    try {
+      months = readdirSync(yDir);
+    } catch {
+      continue;
+    }
+    for (const m of months) {
+      const mDir = join(yDir, m);
+      let files: string[] = [];
+      try {
+        files = readdirSync(mDir);
+      } catch {
+        continue;
+      }
+      for (const f of files) {
+        if (!f.endsWith(".jsonl")) continue;
+        for (const e of readJsonl(join(mDir, f))) {
+          const ts = Date.parse(String(e.timestamp ?? ""));
+          if (Number.isFinite(ts) && ts >= sinceMs) events.push(e);
+        }
+      }
+    }
+  }
+  return events;
+}
+
+function evalSummary(): Snapshot["eval"] | undefined {
+  const path = join(HOME, ".llm-privacy", "eval-history.jsonl");
+  const rows = readJsonl(path);
+  if (rows.length === 0) return undefined;
+  const last = rows[rows.length - 1];
+  const ts = Date.parse(String(last.ts ?? ""));
+  return {
+    detectionRate: typeof last.detection_rate === "number" ? last.detection_rate : undefined,
+    fpRate: typeof last.fp_rate === "number" ? last.fp_rate : undefined,
+    ageDays: Number.isFinite(ts) ? Math.floor((Date.now() - ts) / DAY_MS) : undefined,
+  };
+}
+
+async function proxyHealth(): Promise<Snapshot["proxy"]> {
+  try {
+    const resp = await fetch(PROXY_HEALTH_URL, { signal: AbortSignal.timeout(PROXY_TIMEOUT_MS) });
+    if (!resp.ok) return { up: false };
+    const j = (await resp.json()) as Record<string, unknown>;
+    return {
+      up: true,
+      vaultMode: typeof j.vaultMode === "string" ? j.vaultMode : undefined,
+      version: typeof j.version === "string" ? j.version : undefined,
+      modulesLoaded: typeof j.modulesLoaded === "number" ? j.modulesLoaded : undefined,
+    };
+  } catch {
+    return { up: false };
+  }
+}
+
+async function buildSnapshot(windowDays = 7): Promise<Snapshot> {
+  const now = Date.now();
+  const since = now - windowDays * DAY_MS;
+  const since24h = now - DAY_MS;
+
+  // Seed one bucket per day so the table is dense even on quiet days.
+  const buckets = new Map<string, DayBucket>();
+  for (let i = 0; i < windowDays; i++) {
+    const d = new Date(now - i * DAY_MS);
+    buckets.set(ymd(d), { date: ymd(d), block: 0, ask: 0, degraded: 0, supplyBlocked: 0 });
+  }
+  const bucketFor = (ts: number): DayBucket | undefined => buckets.get(ymd(new Date(ts)));
+
+  const w24 = { block: 0, ask: 0, degraded: 0, supplyBlocked: 0 };
+
+  for (const e of readJsonl(auditPath())) {
+    const ts = Date.parse(String(e.ts ?? ""));
+    if (!Number.isFinite(ts) || ts < since) continue;
+    const decision = String(e.decision ?? "") as Decision;
+    const degraded = e.degraded === true;
+    const b = bucketFor(ts);
+    if (decision === "block") { if (b) b.block++; if (ts >= since24h) w24.block++; }
+    else if (decision === "ask") { if (b) b.ask++; if (ts >= since24h) w24.ask++; }
+    if (degraded) { if (b) b.degraded++; if (ts >= since24h) w24.degraded++; }
+  }
+
+  for (const e of supplyGuardEvents(since)) {
+    const ts = Date.parse(String(e.timestamp ?? ""));
+    if (!Number.isFinite(ts)) continue;
+    if (String(e.decision ?? "") === "block") {
+      const b = bucketFor(ts);
+      if (b) b.supplyBlocked++;
+      if (ts >= since24h) w24.supplyBlocked++;
+    }
+  }
+
+  const proxy = await proxyHealth();
+  const degradedProxyVault = proxy.up && proxy.vaultMode === "memory";
+  const health: Snapshot["health"] = !proxy.up
+    ? "down"
+    : degradedProxyVault || w24.degraded > 0
+    ? "degraded"
+    : "healthy";
+
+  const days = [...buckets.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
+  return { proxy, degradedProxyVault, window24h: w24, days, eval: evalSummary(), health };
+}
+
+function renderBrief(s: Snapshot): string {
+  const vault = s.proxy.up ? `vault=${s.proxy.vaultMode ?? "?"}` : "proxy: down";
+  const w = s.window24h;
+  const parts = [
+    `aih-security: ${s.health}`,
+    `24h: ${w.block} blocked, ${w.ask} asked, ${w.degraded} degraded`,
+    `supply: ${w.supplyBlocked} blocked`,
+    vault,
+  ];
+  if (s.degradedProxyVault) parts.push("⚠ vault in-memory (keys not loaded)");
+  return parts.join(" | ");
+}
+
+function renderTable(s: Snapshot): string {
+  const lines: string[] = [];
+  const proxyLine = s.proxy.up
+    ? `proxy ${s.proxy.version ?? ""} up · vault=${s.proxy.vaultMode ?? "?"} · modules=${s.proxy.modulesLoaded ?? "?"}`
+    : "proxy DOWN";
+  lines.push(`aih-security — ${s.health.toUpperCase()}  (${proxyLine.trim()})`);
+  if (s.eval) {
+    const dr = s.eval.detectionRate != null ? `${(s.eval.detectionRate * 100).toFixed(1)}% detected` : "n/a";
+    const fp = s.eval.fpRate != null ? `${(s.eval.fpRate * 100).toFixed(1)}% FP` : "n/a";
+    const age = s.eval.ageDays != null ? `${s.eval.ageDays}d ago` : "unknown age";
+    lines.push(`eval: ${dr}, ${fp} — last run ${age}  (rerun: bash test/eval.sh)`);
+  } else {
+    lines.push("eval: never run  (baseline: bash test/eval.sh)");
+  }
+  lines.push("");
+  lines.push("date         block  ask  degraded  supply-blocked");
+  for (const d of s.days) {
+    lines.push(
+      `${d.date}   ${String(d.block).padStart(5)}  ${String(d.ask).padStart(3)}  ${String(d.degraded).padStart(8)}  ${String(d.supplyBlocked).padStart(14)}`,
+    );
+  }
+  if (s.degradedProxyVault) {
+    lines.push("");
+    lines.push("⚠ proxy vault is in-memory — encryption keys not loaded. Run: source ~/.llm-privacy/.env.sh && ~/Projects/aih-privacy-proxy/proxy.sh restart");
+  }
+  return lines.join("\n");
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  const snap = await buildSnapshot(7);
+  if (args.includes("--json")) {
+    process.stdout.write(JSON.stringify(snap, null, 2) + "\n");
+  } else if (args.includes("--brief")) {
+    process.stdout.write(renderBrief(snap) + "\n");
+  } else {
+    process.stdout.write(renderTable(snap) + "\n");
+  }
+}
+
+main().catch(() => {
+  // A status tool must never fail loudly at a SessionStart hook.
+  process.stdout.write("aih-security: status unavailable\n");
+});
