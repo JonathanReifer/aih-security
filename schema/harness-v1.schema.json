@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/JonathanReifer/aih-security/schema/harness-v1.schema.json",
+  "title": "aih harness.jsonl record v1",
+  "description": "Tokenized structural mirror of native harness transcripts. One JSON object per line. Commentary: docs/harness-schema.md",
+  "type": "object",
+  "required": ["v", "kind", "ts", "harness", "sessionId"],
+  "properties": {
+    "v": { "const": 1 },
+    "kind": {
+      "enum": [
+        "session_meta",
+        "node",
+        "tool_call",
+        "tool_result",
+        "agent_spawn",
+        "agent_complete",
+        "hook_exec",
+        "compaction",
+        "permission_change"
+      ]
+    },
+    "ts": { "type": "string" },
+    "harness": { "type": "string" },
+    "sessionId": { "type": "string" },
+    "agentId": { "type": "string" },
+    "project": { "type": "string" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "node" } } },
+      "then": {
+        "required": ["uuid", "parentUuid", "role"],
+        "properties": {
+          "uuid": { "type": "string" },
+          "parentUuid": { "type": ["string", "null"] },
+          "role": { "enum": ["user", "assistant", "system"] },
+          "model": { "type": "string" },
+          "redactedText": { "type": ["string", "null"] },
+          "redactedThinking": { "type": ["string", "null"] },
+          "truncated": { "type": "boolean" },
+          "redactionDegraded": { "type": "boolean" },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "in": { "type": "number" },
+              "out": { "type": "number" },
+              "cacheRead": { "type": "number" }
+            }
+          },
+          "promptId": { "type": "string" },
+          "promptSource": { "type": "string" },
+          "origin": { "type": "string" },
+          "requestId": { "type": "string" },
+          "stopReason": { "type": "string" },
+          "isSidechain": { "type": "boolean" },
+          "findings": { "$ref": "#/$defs/findings" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "tool_call" } } },
+      "then": {
+        "required": ["toolUseId", "name", "callerUuid"],
+        "properties": {
+          "toolUseId": { "type": "string" },
+          "name": { "type": "string" },
+          "callerUuid": { "type": "string" },
+          "redactedInput": { "type": ["string", "null"] },
+          "truncated": { "type": "boolean" },
+          "redactionDegraded": { "type": "boolean" },
+          "findings": { "$ref": "#/$defs/findings" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "tool_result" } } },
+      "then": {
+        "required": ["toolUseId", "callerUuid", "success", "sizeBytes"],
+        "properties": {
+          "toolUseId": { "type": "string" },
+          "callerUuid": { "type": "string" },
+          "success": { "type": "boolean" },
+          "sizeBytes": { "type": "number" },
+          "redactedPreview": { "type": ["string", "null"] },
+          "redactionDegraded": { "type": "boolean" },
+          "findings": { "$ref": "#/$defs/findings" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "agent_spawn" } } },
+      "then": {
+        "required": ["agentId", "agentType"],
+        "properties": {
+          "agentId": { "type": "string" },
+          "agentType": { "type": "string" },
+          "spawnDepth": { "type": "number" },
+          "parentToolUseId": { "type": "string" },
+          "slug": { "type": "string" },
+          "redactedDescription": { "type": ["string", "null"] },
+          "findings": { "$ref": "#/$defs/findings" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "agent_complete" } } },
+      "then": {
+        "required": ["agentId", "endTs", "nodeCount"],
+        "properties": {
+          "agentId": { "type": "string" },
+          "endTs": { "type": "string" },
+          "nodeCount": { "type": "number" },
+          "totalUsage": {
+            "type": "object",
+            "properties": {
+              "in": { "type": "number" },
+              "out": { "type": "number" },
+              "cacheRead": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "hook_exec" } } },
+      "then": {
+        "required": ["uuid", "hookCount"],
+        "properties": {
+          "uuid": { "type": "string" },
+          "hookEvent": { "type": "string" },
+          "hookCount": { "type": "number" },
+          "errorCount": { "type": "number" },
+          "durationMs": { "type": "number" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "compaction" } } },
+      "then": {
+        "required": ["uuid"],
+        "properties": { "uuid": { "type": "string" } }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "permission_change" } } },
+      "then": {
+        "required": ["permissionMode"],
+        "properties": { "permissionMode": { "type": "string" } }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "session_meta" } } },
+      "then": {
+        "properties": {
+          "cwd": { "type": "string" },
+          "gitBranch": { "type": "string" },
+          "slug": { "type": "string" },
+          "version": { "type": "string" },
+          "entrypoint": { "type": "string" },
+          "skippedKinds": {
+            "type": "object",
+            "additionalProperties": { "type": "number" }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "severity", "token"],
+        "properties": {
+          "type": { "type": "string" },
+          "severity": { "enum": ["block", "warn", "info"] },
+          "token": { "type": "string", "pattern": "^tok_" }
+        }
+      }
+    }
+  }
+}

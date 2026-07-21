@@ -199,6 +199,74 @@ else
   rm -rf "$seed_dir"
 fi
 
+# ── Harness mirror conformance (harness-v1 schema) ─────────────────────────
+
+section "harness mirror — schema conformance + redaction invariant"
+
+MIRROR_CLI="${MW_PATH}/src/cli/mirror.ts"
+VALIDATOR="$(cd "$(dirname "$0")/lib"; pwd)/validate-harness.ts"
+
+if [ ! -f "$MIRROR_CLI" ]; then
+  skip "aih-privacy-middleware mirror CLI not present"
+else
+  hm_dir="$(mktemp -d)"
+  # Fixture: one session with a marker secret in prompt text + nested tool input,
+  # plus a subagent with the spawn edge.
+  proj="${hm_dir}/projects/-tmp-demo"
+  sess="11111111-2222-3333-4444-555555555555"
+  mkdir -p "${proj}/${sess}/subagents"
+  {
+    echo "{\"type\":\"user\",\"uuid\":\"u1\",\"parentUuid\":null,\"sessionId\":\"${sess}\",\"timestamp\":\"2026-07-20T00:00:00Z\",\"cwd\":\"/tmp/demo\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"key sk-CONFLEAKMARKER000000000000 here\"}]}}"
+    echo "{\"type\":\"assistant\",\"uuid\":\"a1\",\"parentUuid\":\"u1\",\"sessionId\":\"${sess}\",\"timestamp\":\"2026-07-20T00:00:05Z\",\"message\":{\"role\":\"assistant\",\"model\":\"m\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_conf01\",\"name\":\"Agent\",\"input\":{\"nested\":{\"path\":\"/x/AKIACONFLEAKMARKER00/y\"}}}]}}"
+  } > "${proj}/${sess}.jsonl"
+  echo "{\"agentType\":\"Explore\",\"description\":\"probe\",\"toolUseId\":\"toolu_conf01\",\"spawnDepth\":1}" > "${proj}/${sess}/subagents/agent-conf1.meta.json"
+  echo "{\"type\":\"user\",\"uuid\":\"su1\",\"parentUuid\":null,\"sessionId\":\"x\",\"agentId\":\"agent-conf1\",\"isSidechain\":true,\"timestamp\":\"2026-07-20T00:00:10Z\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"go\"}]}}" > "${proj}/${sess}/subagents/agent-conf1.jsonl"
+
+  hm_out="${hm_dir}/harness.jsonl"
+  hm_key="$(printf '0123456789abcdef0123456789abcdef' | base64)"
+  if LLM_PRIVACY_HMAC_KEY="$hm_key" \
+     LLM_PRIVACY_HARNESS_PATH="$hm_out" \
+     LLM_PRIVACY_MIRROR_STATE_DIR="${hm_dir}/state" \
+     CLAUDE_PROJECTS_DIR="${hm_dir}/projects" \
+     bun "$MIRROR_CLI" --sweep --budget 30000 >/dev/null 2>&1 && [ -s "$hm_out" ]; then
+    pass "mirror sweep produced harness.jsonl"
+  else
+    fail "mirror sweep failed or produced no output"
+  fi
+
+  if [ -s "$hm_out" ] && bun "$VALIDATOR" "$hm_out" >/dev/null 2>&1; then
+    pass "harness.jsonl conforms to schema/harness-v1.schema.json"
+  else
+    fail "harness.jsonl failed schema conformance"
+  fi
+
+  if [ -s "$hm_out" ] && grep -q "CONFLEAKMARKER" "$hm_out"; then
+    fail "raw marker secret leaked into harness.jsonl"
+  else
+    pass "marker secrets absent from harness.jsonl (redaction invariant)"
+  fi
+
+  if [ -s "$hm_out" ] && grep -q '"kind":"agent_spawn"' "$hm_out" && grep -q '"parentToolUseId":"toolu_conf01"' "$hm_out"; then
+    pass "agent_spawn carries the parentToolUseId spine edge"
+  else
+    fail "agent_spawn spine edge missing"
+  fi
+
+  # Conformance of the REAL machine log, when present (sampled).
+  real_hm="${HOME}/.llm-privacy/harness.jsonl"
+  if [ -s "$real_hm" ]; then
+    if bun "$VALIDATOR" "$real_hm" --sample 5000 >/dev/null 2>&1; then
+      pass "real ~/.llm-privacy/harness.jsonl conforms (5k-record sample)"
+    else
+      fail "real harness.jsonl sample failed conformance"
+    fi
+  else
+    skip "no real harness.jsonl on this machine"
+  fi
+
+  rm -rf "$hm_dir"
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────────
 
 echo ""
