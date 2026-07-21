@@ -267,6 +267,72 @@ else
   rm -rf "$hm_dir"
 fi
 
+# ── Harness mirror hook wiring (P1) ─────────────────────────────────────────
+
+section "harness mirror — hook wiring"
+
+HM_HOOK="${MW_PATH}/src/hooks/HarnessMirror.hook.ts"
+
+if [ ! -f "$HM_HOOK" ]; then
+  skip "HarnessMirror.hook.ts not present"
+else
+  p1_dir="$(mktemp -d)"
+  p1_proj="${p1_dir}/projects/-tmp-p1"
+  p1_sess="22222222-3333-4444-5555-666666666666"
+  mkdir -p "$p1_proj"
+  echo "{\"type\":\"user\",\"uuid\":\"u1\",\"parentUuid\":null,\"sessionId\":\"${p1_sess}\",\"timestamp\":\"2026-07-20T02:00:00Z\",\"cwd\":\"/tmp/p1\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"hi\"}]}}" > "${p1_proj}/${p1_sess}.jsonl"
+
+  p1_env="LLM_PRIVACY_HMAC_KEY=$(printf '0123456789abcdef0123456789abcdef' | base64) \
+LLM_PRIVACY_HARNESS_PATH=${p1_dir}/h.jsonl \
+LLM_PRIVACY_MIRROR_STATE_DIR=${p1_dir}/state \
+CLAUDE_PROJECTS_DIR=${p1_dir}/projects"
+
+  # Hook must answer continue:true immediately regardless of sweep outcome.
+  hook_out="$(echo "{\"session_id\":\"${p1_sess}\",\"hook_event_name\":\"Stop\",\"transcript_path\":\"${p1_proj}/${p1_sess}.jsonl\"}" | env $p1_env bun "$HM_HOOK" 2>/dev/null)"
+  if echo "$hook_out" | grep -q '"continue":true'; then
+    pass "HarnessMirror hook answers continue:true"
+  else
+    fail "HarnessMirror hook wrong output: $hook_out"
+  fi
+
+  # Detached sweep lands records shortly after the hook already returned.
+  sleep 2
+  if [ -s "${p1_dir}/h.jsonl" ] && grep -q '"kind":"node"' "${p1_dir}/h.jsonl"; then
+    pass "detached sweep mirrored records after hook exit"
+  else
+    fail "detached sweep produced no records"
+  fi
+
+  # Malformed stdin still fails open.
+  hook_out2="$(echo 'not json at all' | env $p1_env bun "$HM_HOOK" 2>/dev/null)"
+  if echo "$hook_out2" | grep -q '"continue":true'; then
+    pass "HarnessMirror hook fails open on malformed stdin"
+  else
+    fail "HarnessMirror hook broke on malformed stdin"
+  fi
+
+  # Lock: a held lock makes a concurrent CLI sweep exit 3 without appending.
+  mkdir -p "${p1_dir}/state"
+  echo "$$" > "${p1_dir}/state/.lock"
+  if env $p1_env bun "${MW_PATH}/src/cli/mirror.ts" --sweep >/dev/null 2>&1; then
+    fail "mirror CLI ignored a held lock"
+  else
+    pass "mirror CLI respects a held (fresh) lock"
+  fi
+  rm -f "${p1_dir}/state/.lock"
+
+  # install.sh carries both registration and strip for the mirror hook.
+  installer="$(cd "$(dirname "$0")/.."; pwd)/install.sh"
+  reg_count="$(grep -c "HarnessMirror" "$installer" || true)"
+  if [ "${reg_count}" -ge 3 ]; then
+    pass "install.sh registers + strips HarnessMirror (${reg_count} references)"
+  else
+    fail "install.sh missing HarnessMirror wiring (${reg_count} references)"
+  fi
+
+  rm -rf "$p1_dir"
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────────
 
 echo ""

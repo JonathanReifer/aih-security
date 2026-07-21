@@ -164,10 +164,10 @@ def strip(event, needle_fn):
             del hooks[event]
         changed.append(f"  - {event}: removed {removed} aih-security hook(s)")
 
-strip('SessionStart', lambda e: 'proxy.sh' in str(e) or 'aih-status' in str(e))
+strip('SessionStart', lambda e: 'proxy.sh' in str(e) or 'aih-status' in str(e) or 'HarnessMirror' in str(e))
 strip('UserPromptSubmit', lambda e: 'PrivacyPromptGuard' in str(e))
 strip('PreToolUse', lambda e: 'PrivacyToolGuard' in str(e) or 'SupplyGuard.hook.ts' in str(e))
-strip('Stop', lambda e: 'PrivacyResponseScanner' in str(e))
+strip('Stop', lambda e: 'PrivacyResponseScanner' in str(e) or 'HarnessMirror' in str(e))
 
 if changed:
     with open(settings_path, 'w') as f:
@@ -600,6 +600,19 @@ status_cmd = f'{self_dir}/bin/aih-status --brief'
 if not any('aih-status' in str(g) for g in ss):
     ss.append({'hooks': [{'type': 'command', 'command': status_cmd}]})
     changed.append("  + SessionStart hook (aih-status visibility)")
+
+# HarnessMirror: tokenized structural transcript mirror (harness.jsonl).
+# Stop → sweep the current session's directory; SessionStart → bounded
+# machine-wide catch-up. The hook spawns a detached sweep and exits — never
+# blocks the harness. Schema: docs/harness-schema.md.
+cmd_hm = f'bun {mw_path}/src/hooks/HarnessMirror.hook.ts'
+if not any('HarnessMirror' in str(g) for g in ss):
+    ss.append({'hooks': [{'type': 'command', 'command': cmd_hm}]})
+    changed.append("  + SessionStart hook (HarnessMirror catch-up)")
+hm_stop = hooks.setdefault('Stop', [])
+if not any('HarnessMirror' in str(g) for g in hm_stop):
+    hm_stop.append({'hooks': [{'type': 'command', 'command': cmd_hm}]})
+    changed.append("  + Stop hook (HarnessMirror sweep)")
 
 if tier >= 2:
     # UserPromptSubmit: prompt guard
